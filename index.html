@@ -715,13 +715,14 @@ function save(){
  }).finally(()=>{cloudBusy=false;applyCloud(cloudSnapshot)});
 }
 function startCloud(){
+ firebase.initializeApp(firebaseConfig);
  const auth=firebase.auth();
  dbCloud=firebase.firestore();
  const gate=document.getElementById('authGate'),error=document.getElementById('authErr');
  document.getElementById('authCard').addEventListener('submit',async ev=>{
    ev.preventDefault();error.textContent='';const btn=document.getElementById('loginBtn');btn.disabled=true;
    try{await auth.signInWithEmailAndPassword(document.getElementById('authEmail').value.trim(),document.getElementById('authPassword').value)}
-   catch(e){error.textContent='Login failed. Email/password check karein.'}
+   catch(e){console.error('Firebase login error',e);error.textContent='Login failed: '+(e.code||e.message||'Check email/password');}
    finally{btn.disabled=false}
  });
  document.getElementById('signOut').onclick=()=>auth.signOut();
@@ -883,5 +884,5 @@ document.addEventListener('change',e=>{if(cloudBusy){toast('Saving…');return}c
  else if(t.id==='pf'&&t.files.length){pick([...t.files]);t.value=''}
  else if(t.id==='rf'&&t.files[0]){const r=new FileReader();r.onload=()=>{try{const v=JSON.parse(r.result);if(!v.entries)throw 0;S=v;save();render();toast('Restore saving to cloud…')}catch(er){toast('Backup file galat hai')}};r.readAsText(t.files[0])}});
 $('#q').addEventListener('input',render);
-document.addEventListener('DOMContentLoaded',()=>{if(typeof firebase==='undefined'){document.getElementById('authErr').textContent='Firebase SDK load nahi hua. Internet connection check karein.'}else startCloud()});
+document.addEventListener('DOMContentLoaded',()=>{if(typeof firebase==='undefined'){document.getElementById('authErr').textContent='Firebase SDK load nahi hua. Internet connection check karein.'}else {try{startCloud()}catch(e){console.error('Firebase initialization error',e);document.getElementById('authErr').textContent='Firebase setup error: '+e.message;}}});
 </script></body></html>
