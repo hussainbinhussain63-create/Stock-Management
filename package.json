@@ -1,0 +1,12 @@
+{
+  "name": "mysmar-stock-manager",
+  "private": true,
+  "version": "1.1.0",
+  "scripts": {
+    "setup-users": "node scripts/setup-users.js",
+    "disable-legacy": "node scripts/disable-legacy-users.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

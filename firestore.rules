@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isActiveStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.active == true;
+    }
+    // Only the Vercel authenticated server API may write stock and append audit records.
+    match /stock/{id} {
+      allow read: if isActiveStaff();
+      allow write: if false;
+    }
+    match /stock_activity/{id} {
+      allow read: if isActiveStaff();
+      allow write: if false;
+    }
+    match /staff/{uid} { allow read, write: if false; }
+    match /login_credentials/{username} { allow read, write: if false; }
+    match /login_attempts/{id} { allow read, write: if false; }
+    match /{any=**} { allow read, write: if false; }
+  }
+}
