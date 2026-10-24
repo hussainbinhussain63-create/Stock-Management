@@ -95,6 +95,9 @@ button.d{
   background:var(--card);color:var(--bad);border-color:rgba(220,38,38,.35);
 }
 button.d:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
+button.clear-size{background:var(--bad-bg);color:var(--bad);border:1px solid rgba(220,38,38,.45);font-weight:700}
+button.clear-size:hover{background:var(--bad);color:#fff}
+
 header label{color:var(--mu);font-size:13px}
 #q{
   flex:1;min-width:160px;font-size:15px;padding:11px 16px;
@@ -646,6 +649,24 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 const SEED=[{"sku": "ALV1017", "price": 75, "h": "1111111111111111101111100100000110001111010010111000000011011001100000010111100111111011011111011111100001010101111110000100000110111100010000011011100001000001101001100111000110000000011000011000000001100001000000000110100100000000011000011111111111111111"}, {"sku": "ALV1098", "price": 60, "h": "1111111111111111111001100101111111100111110111011111101111000001101100110100000110110000010000011110000001000001110000001100000110000000010000011000000111000001100000000101111110000000011001011000000001100001110000000110000111110111111000011111111111111111"}, {"sku": "ALV2007", "price": 65, "h": "1111111111001001111111111100000111000011110110011100001111011101110000011101011111000001111111111101000111000001110100011100000110100001110000011010000111000001100100011101111110010000010101111000000001001011000000000100111100000000010000011110011111001001"}, {"sku": "ALV2009", "price": 65, "h": "1111111111111111111111111110001111110011110000011110000111000001101000011110000111000000111000011000000011000001100000000100000111000000010000011100000001000001110000001111111111000000111101111100000011110011110000001110001111000000111000011111111111110011"}, {"sku": "ALV2010", "price": 90, "h": "1111111111101111111111111110110111101011110000001110100111000000111000011100000011000000111111111110000001101101110000000110100111000000011000011100000001100001110000000111111111000000010000011100000001000001111000000110000111100000011000011111111111111001"}, {"sku": "ALV2016", "price": 85, "h": "1111111111111111111111100100110111100111110001011010001111000011110000011100001111000001111000111110000111000001111000001100000111100000110000011100000011000001100000000100010111100000110000011110000011000001110000001100000111100000110000011111111111111111"}, {"sku": "ALV2131", "price": 80, "h": "1111111111111111111111111100100011111011110000001111000111000000111100001100000011110000110111001111000011000000111100001100000011110000111000111111000011000001111100001100000110000000110000011100000011000001110000000100000111111100010000011111111111010011"}, {"sku": "ALV2168", "price": 55, "h": "1111111111111111111111111111111111110011110000111011000111000011100100101100001110000010000000011000001110000001100000010000000110000001011111111000000001000101100000000000000111100000110000111110000011000011111000001100000111111111110000011111111111100011"}, {"sku": "ALV2277", "price": 90, "h": "1111111111111111111111111111010111111111111100011100010011110000110000000110000011000000010000001000000001000000100000000011111111100000110000001110000011000000110000000100000111000000010000011110000001000001111001000100000111111111111111111111111111111111"}];
 const SIZES=['S','M','L','XL','2XL','3XL','4XL','5XL','6XL','7XL','Saree'];
 let S={entries:[]},page='home',filt='avail',DBOK=true;
+// Size views are in-app routes. Browser/phone Back now returns to the sizes list
+// instead of navigating away to the previous sign-in page.
+const readViewFromUrl=()=>{const match=location.hash.match(/^#size=([^&]+)/);if(!match)return 'home';try{const v=decodeURIComponent(match[1]);return SIZES.includes(v)?v:'home'}catch(_){return 'home'}};
+page=readViewFromUrl();
+if(!history.state?.stockManager){history.replaceState({stockManager:true,view:page,depth:0},'',location.href)}
+function goPage(next,{replace=false}={}){
+ if(next!=='home'&&!SIZES.includes(next))return;
+ if(next===page)return;
+ const depth=replace?(history.state?.depth||0):(history.state?.depth||0)+1;
+ const target=next==='home'?location.pathname+location.search:location.pathname+location.search+'#size='+encodeURIComponent(next);
+ if(replace)history.replaceState({stockManager:true,view:next,depth},'',target);
+ else history.pushState({stockManager:true,view:next,depth},'',target);
+ page=next;filt='avail';$('#q').value='';render();scrollTo(0,0);
+}
+window.addEventListener('popstate',event=>{
+ const to=(event.state?.stockManager&&SIZES.includes(event.state.view))?event.state.view:readViewFromUrl();
+ page=to;filt='avail';$('#q').value='';render();scrollTo(0,0);
+});
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -720,7 +741,7 @@ function startCloud(){
    document.getElementById('signOut').hidden=!user;
    document.getElementById('activeUser').textContent='';
    if(user) user.getIdTokenResult().then(info=>{if(firebase.auth().currentUser?.uid===user.uid) document.getElementById('activeUser').textContent=info.claims.staffName||info.claims.staffUsername||'';}).catch(()=>{});
-   if(!user){S={entries:[]};cloudSnapshot=[];cloudPrevious.clear();syncLabel('Login required');render();return}
+   if(!user){S={entries:[]};cloudSnapshot=[];cloudPrevious.clear();page='home';history.replaceState({stockManager:true,view:'home',depth:0},'',location.pathname+location.search);syncLabel('Login required');render();return}
    syncLabel('Connecting…');
    cloudUnsub=dbCloud.collection('stock').onSnapshot(snap=>{
     cloudReady=true;
@@ -745,7 +766,7 @@ function render(){
  const m=$('#m'),q=$('#q').value.trim();
  $('#ti').textContent=page==='home'?'Stock Manager':'Size '+page;
  $('#nav').innerHTML=page==='home'?`<button class="p" data-pdfall>PDF - All sizes</button>`:
-  `<button data-go="home">&larr; Sizes</button><button class="g" data-up>+ Upload pictures</button><button class="p" data-pdf="${page}">PDF Download</button>
+  `<button data-go="home">&larr; Sizes</button><button class="g" data-up>+ Upload pictures</button><button class="p" data-pdf="${page}">PDF Download</button><button class="clear-size" type="button" data-clear-size="${page}" title="Delete all stock entries in this size">&#128465; Clear All (${page})</button>
   <select id="fl"><option value="avail"${filt==='avail'?' selected':''}>Available</option><option value="sold"${filt==='sold'?' selected':''}>Sold out</option><option value="all"${filt==='all'?' selected':''}>All</option></select>
   <label class="mu"><input type="checkbox" id="cr"${render.cr?' checked':''}> PDF mein picture ka upar wala label hide</label>`;
  $('#nav').insertAdjacentHTML('beforeend',' <button type="button" data-history>Activity History</button>');
@@ -787,47 +808,67 @@ function pinkBox(im){const k=Math.min(1,700/im.width),w=Math.round(im.width*k),h
  if(bn<300)return null;const b=best.map(v=>v/k);b[3]=Math.min(b[3],b[1]+.3*(b[2]-b[0]),b[1]+.14*im.height);return b}
 function cropC(im,b,th){const sw=b[2]-b[0],sh=b[3]-b[1],k=Math.max(1,900/sw),pd=16,c=document.createElement('canvas');c.width=Math.round(sw*k)+2*pd;c.height=Math.round(sh*k)+2*pd;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,b[0],b[1],sw,sh,pd,pd,c.width-2*pd,c.height-2*pd);
  if(th){const d=x.getImageData(0,0,c.width,c.height),p=d.data;for(let i=0;i<p.length;i+=4){const g=p[i]*.299+p[i+1]*.587+p[i+2]*.114;p[i]=p[i+1]=p[i+2]=g<th?0:255}x.putImageData(d,0,0)}return c}
+// Detect long style codes such as HRT101695, as well as shorter ALV2010.
+// Never treat "AED 120" or "SIZE 2XL" as a SKU. Manual confirmation remains required.
 function parseTx(t){
- t=t.toUpperCase().replace(/\n/g,' ').replace(/[|]/g,'I');
- // Price first
- const b=t.match(/AED\s*(\d{2,4})/);
- const price=b?b[1]:'';
- // Prefer ALV with OCR fixes (legacy seed style)
- let a=t.match(/[A4][LI1][VW]\s*([0-9OILSBZ]{3,4})/);
- if(a){
-  const num=a[1].replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
-  return{sku:'ALV'+num,price};
+ const text=String(t||'').toUpperCase().replace(/[\u00A0\t]/g,' ').replace(/[\u2013\u2014]/g,'-').replace(/[|]/g,'I');
+ const numFix=v=>v.replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6');
+ const priceFound=text.match(/\bAED\s*[:\-]?\s*([0-9OILSBZ]{1,5})\b/);
+ const price=priceFound?numFix(priceFound[1]):'';
+ const blacklist=new Set(['AED','SIZE','PRICE','STYLE','CODE','REF','ITEM','ART','MRP','TOTAL']);
+ const found=[];
+ // Work one OCR token at a time; splitting a contiguous SKU is safer than
+ // allowing a generic greedy regex to eat the last part of its letter prefix.
+ const line=text.replace(/[\r\n]/g,' ');
+ const matcher=/\b([A-Z]{2,7})\s*[-:]?\s*([0-9OILSBZG]{3,9})\b/g;
+ for(const m of line.matchAll(matcher)){
+   const prefix=m[1];if(blacklist.has(prefix))continue;
+   const digits=numFix(m[2]);if(!/^\d{3,9}$/.test(digits))continue;
+   found.push({sku:prefix+digits,score:digits.length*2+(prefix.length>=3&&prefix.length<=5?3:0)});
  }
- // General SKU: 2–5 letters + 3–5 digits (VRN1002, TRT2001, etc.)
- a=t.match(/\b([A-Z]{2,5})\s*[-–]?\s*([0-9OILSBZ]{3,5})\b/);
- if(a){
-  const letters=a[1].replace(/[|]/g,'I');
-  const num=a[2].replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
-  return{sku:letters+num,price};
+ // OCR sometimes reads the digits 1/0 as I/O. Try different letter/number
+ // boundaries in the full token, favoring realistic 3-5 letter SKU prefixes.
+ for(const token of line.match(/\b[A-Z0-9]{6,17}\b/g)||[]){
+   for(let n=2;n<=Math.min(6,token.length-3);n++){
+     const prefix=token.slice(0,n),tail=token.slice(n);
+     if(!/^[A-Z]{2,6}$/.test(prefix)||blacklist.has(prefix))continue;
+     if(!/^[0-9OILSBZG]{3,9}$/.test(tail))continue;
+     const digits=numFix(tail);if(!/^\d{3,9}$/.test(digits))continue;
+     const digitCount=(tail.match(/[0-9]/g)||[]).length;
+     // A handful of genuinely printed digits is important for reliability.
+     if(digitCount<2)continue;
+     const score=digits.length*2+(n>=3&&n<=5?3:0)+digitCount*.5;
+     found.push({sku:prefix+digits,score});
+   }
  }
- // Fallback: letters+digits stuck together
- a=t.match(/\b([A-Z]{2,5}[0-9OILSBZ]{3,5})\b/);
- if(a){
-  const raw=a[1].replace(/O/g,'0').replace(/[IL]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
-  return{sku:raw,price};
- }
- return{sku:'',price};
+ found.sort((a,b)=>b.score-a.score||b.sku.length-a.sku.length);
+ return {sku:found[0]?.sku||'',price};
 }
 async function ocrBanner(im){
- if(!TESS){await loadTess();TESS=await Tesseract.createWorker('eng');await TESS.setParameters({tessedit_pageseg_mode:'6'})}
- const W=im.width,H=im.height,pb=pinkBox(im),fix=[0,0,W*.6,H*.13],wide=[0,0,W,H*.25],tries=[];
- if(pb)tries.push([pb,110],[pb,0],[pb,150]);tries.push([fix,0],[wide,0],[fix,135]);const res={sku:'',price:''};
- for(const[b,th]of tries){const o=parseTx((await TESS.recognize(cropC(im,b,th))).data.text);if(o.sku&&!res.sku)res.sku=o.sku;if(o.price&&!res.price)res.price=o.price;if(res.sku&&res.price)break}
- return res}
+ if(!TESS){await loadTess();TESS=await Tesseract.createWorker('eng');await TESS.setParameters({tessedit_pageseg_mode:'7'})}
+ const W=im.width,H=im.height,pb=pinkBox(im),fix=[0,0,W*.74,H*.17],wide=[0,0,W,H*.25],tries=[];
+ // First-line pink label is the priority, then wider crops as fallback.
+ if(pb)tries.push([pb,0],[pb,135]);
+ tries.push([fix,0],[wide,0],[fix,145]);
+ let best={sku:'',price:''};
+ for(const[b,threshold]of tries){
+  const txt=(await TESS.recognize(cropC(im,b,threshold))).data.text;
+  const out=parseTx(txt);
+  if(out.price&&!best.price)best.price=out.price;
+  if(out.sku&&!best.sku)best.sku=out.sku;
+  if(best.sku&&best.price)break;
+ }
+ return best;
+}
 async function pick(files){toast('Pictures process ho rahi hain...');const rows=[];
  for(const f of files){const im=await li(await rd(f));let sku='',price='',src='n';
   try{const h=ahash(im);let b=null,bd=999;SEED.forEach(s=>{const d=ham(h,s.h);if(d<bd){bd=d;b=s}});if(bd<=28){sku=b.sku;price=b.price;src='m'}}catch(e){}
   if(!sku){try{toast('Picture se SKU padh raha hun ('+(rows.length+1)+'/'+files.length+')...');const o=await ocrBanner(im);if(o.sku){sku=o.sku;price=o.price;src='o'}}catch(e){if(!pick.warned){pick.warned=1;toast('OCR load nahi hua (internet?) - SKU khud likhein')}}}
   const k=Math.min(1,640/im.width),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-  let ban='';if(src!=='m'){try{const g=cropC(im,pinkBox(im)||[0,0,im.width*.6,im.height*.13],0),q=document.createElement('canvas');q.width=320;q.height=Math.max(20,Math.round(320*g.height/g.width));q.getContext('2d').drawImage(g,0,0,q.width,q.height);ban=q.toDataURL('image/jpeg',.6)}catch(e){}}
+  let ban='';if(src!=='m'){try{const g=cropC(im,pinkBox(im)||[0,0,im.width*.6,im.height*.13],0),q=document.createElement('canvas');q.width=560;q.height=Math.max(28,Math.round(560*g.height/g.width));q.getContext('2d').drawImage(g,0,0,q.width,q.height);ban=q.toDataURL('image/jpeg',.6)}catch(e){}}
   rows.push({img:c.toDataURL('image/jpeg',.72),sku,price,src,ban})}
- const d=$('#dl');d.innerHTML=`<b>Size ${page} mein add karein</b><p class="mu">Har picture ka SKU aur price check karein (jo pehchan/padh liye wo bhar diye hain).</p>`+
-  rows.map((r,i)=>`<div class="ur"><img src="${r.img}"><div style="flex:1"><input data-k="${i}" data-f="sku" placeholder="SKU" value="${esc(r.sku)}"><input data-k="${i}" data-f="price" type="number" placeholder="Price AED" value="${esc(r.price)}" style="margin-top:4px"><span class="tag ${r.src}">${r.src==='m'?'&#10003; Pehchana hua':r.src==='o'?'Picture se padha - check karein':'Khud likhein'}</span>${r.ban?`<img class="ban" src="${r.ban}">`:''}</div></div>`).join('')+
+ const d=$('#dl');d.innerHTML=`<b>Size ${page} mein add karein</b><p class="mu">SKU aur AED price photo se mila kar verify karein. Long SKU (HRT101695) bhi supported hai; galat reading ho to Add se pehle edit karein.</p>`+
+  rows.map((r,i)=>`<div class="ur"><img src="${r.img}"><div style="flex:1"><input data-k="${i}" data-f="sku" placeholder="SKU (e.g. HRT101695)" value="${esc(r.sku)}" autocapitalize="characters" spellcheck="false"><input data-k="${i}" data-f="price" type="number" placeholder="Price AED" value="${esc(r.price)}" style="margin-top:4px"><span class="tag ${r.src}">${r.src==='m'?'&#10003; Pehchana hua':r.src==='o'?'Picture se padha - check karein':'Khud likhein'}</span>${r.ban?`<img class="ban" src="${r.ban}">`:''}</div></div>`).join('')+
   `<div class="row" style="justify-content:flex-end;margin-top:10px"><button id="c">Cancel</button><button class="g" id="ok">Add</button></div>`;
  d.showModal();$('#c').onclick=()=>d.close();
  $('#ok').onclick=()=>{let bad=0,add=0;rows.forEach((r,i)=>{r.sku=d.querySelector(`[data-k="${i}"][data-f=sku]`).value.trim().toUpperCase();r.price=d.querySelector(`[data-k="${i}"][data-f=price]`).value;if(!r.sku)bad++});
@@ -844,6 +885,35 @@ async function pick(files){toast('Pictures process ho rahi hain...');const rows=
    else{S.entries.push({id:now.toString(36)+Math.random().toString(36).slice(2,6),size:page,sku:r.sku,price:r.price,img:r.img,sold:false,ts:now,qty:n});add+=n}
   });
   save();d.close();render();toast(add+' piece'+(add>1?'s':'')+' add ho gaye')}}
+// One size at a time. Each server batch removes stock AND adds authenticated
+// activity-history events atomically; no direct client Firestore deletion.
+async function clearSize(size){
+ if(!SIZES.includes(size)||!cloudReady||cloudBusy){toast('Online sync ready nahi. Dobara try karein.');return}
+ const all=inSize(size);if(!all.length){toast('Size '+size+' pehle se empty hai');return}
+ const answer=prompt('DANGER: Size '+size+' ke '+all.length+' stock entries permanently delete honge (available aur sold out). Confirm karne ke liye '+size+' type karein:');
+ if(answer===null)return;
+ if(answer.trim()!==size){toast('Clear cancelled: size match nahi hua');return}
+ if(!confirm('Final confirmation: Size '+size+' ke SAB items delete karne hain? Activity history rahegi.'))return;
+ cloudBusy=true;let removed=0;
+ try{
+  for(let i=0;i<100;i++){
+   syncLabel('Clearing '+size+' · '+removed+' removed…');
+   const u=firebase.auth().currentUser;
+   if(!u)throw Error('Session expired. Login karein.');
+   const token=await u.getIdToken();
+   const response=await fetch('/api/clear-size',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({size})});
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(data.error||'Could not clear size');
+   removed+=Number(data.removed)||0;
+   if(!data.removed)break;
+   if(i===99)throw Error('Too many items. Please run Clear All again.');
+  }
+  syncLabel('Live • Synced');toast('Size '+size+': '+removed+' entries cleared');
+ }catch(err){
+  console.error(err);syncLabel('Clear incomplete');
+  alert('Clear All complete nahi hua. '+removed+' entries removed. '+err.message+'\nRefresh/Retry se remaining items clear kar sakte hain.');
+ }finally{cloudBusy=false;applyCloud(cloudSnapshot)}
+}
 async function pdf(sizes){const crop=$('#cr')?.checked;
  const {jsPDF}=window.jspdf,d=new jsPDF({unit:'mm',format:'a4'}),cw=90,ch=125;let first=true,n=0;
  for(const sz of sizes){const L=inSize(sz).filter(e=>!e.sold).sort((a,b)=>a.sku.localeCompare(b.sku));
@@ -865,7 +935,7 @@ async function showActivity(){
    if(!firebase.auth().currentUser)throw Error('Please login first');
    const result=await dbCloud.collection('stock_activity').orderBy('at','desc').limit(100).get();
    if(result.empty){target.textContent='Abhi koi stock change record nahi hua.';return}
-   const label={added:'Stock added',stock_added:'Quantity added',sold:'Sold',restored:'Restored',deleted:'Deleted',updated:'Updated',price_updated:'Price changed',photo_updated:'Picture changed'};
+   const label={added:'Stock added',stock_added:'Quantity added',sold:'Sold',restored:'Restored',deleted:'Deleted',cleared_size:'Size cleared',updated:'Updated',price_updated:'Price changed',photo_updated:'Picture changed'};
    target.innerHTML=result.docs.map(doc=>{
      const r=doc.data(),before=r.before||{},after=r.after||{};
      const stamp=r.at&&r.at.toDate?r.at.toDate().toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'}):'Saving time...';
@@ -881,7 +951,8 @@ document.getElementById('closeAudit').onclick=()=>document.getElementById('audit
 
 document.addEventListener('click',e=>{if(cloudBusy){toast('Saving…');return}const t=e.target,g=a=>t.closest('['+a+']');let x;
  if(g('data-history')){showActivity();return}
- if(x=g('data-go')){page=x.dataset.go;$('#q').value='';render();scrollTo(0,0)}
+ if(x=g('data-go')){if(x.dataset.go==='home'&&history.state?.stockManager&&history.state.depth>0)history.back();else goPage(x.dataset.go,{replace:x.dataset.go==='home'})}
+ else if(x=g('data-clear-size')){clearSize(x.dataset.clearSize);return}
  else if(x=g('data-up'))$('#pf').click();
  else if(x=g('data-pdf'))pdf([x.dataset.pdf]);
  else if(g('data-pdfall'))pdf(SIZES);

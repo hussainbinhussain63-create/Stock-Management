@@ -75,3 +75,33 @@ IMPORTANT LIMITATIONS:
 - Activity History shows the 100 newest events; older events stay in Firestore.
 - This is a technical deploy package: account creation, secure environment
   configuration and deployment need to be completed before the features work.
+
+UPDATE — Back navigation, Clear All per size, longer photo-label SKUs
+===================================================================
+1. Browser/phone Back inside any size screen now returns to Sizes without
+   revisiting the previous login site or refreshing the app. The in-app
+   "← Sizes" button uses the same navigation behavior.
+2. Each size screen (S, M, L, XL, 2XL, ... Saree) has a red Clear All button.
+   It deletes ONLY that size's stock entries (available AND sold out), after
+   typing the size and a second confirmation. EVERY removed item is logged as
+   "Size cleared" with the verified staff identity in Activity History.
+   THIS ACTION IS PERMANENT. Download a stock backup before clearing.
+3. Picture text reading recognizes longer SKUs such as HRT101695 and HRT10169S
+   (OCR 'S' vs '5'), recognizes AED price separately, and displays a larger
+   cropped label preview to verify before adding. Always check each SKU manually
+   before you press Add, especially faint/blurry photos; OCR is not infallible.
+
+DEPLOYMENT OF THIS UPDATE
+- Replace the complete project with the files in this ZIP and deploy on Vercel.
+- NEW: api/clear-size.js must deploy together with index.html (not just HTML).
+- Your Vercel Firebase service-account environment variable and existing
+  Firebase/Firestore staff accounts are reused. DO NOT rerun setup-users: it
+  may rotate users' passwords or create different credentials.
+- This package DOES NOT include any private account credentials or secret JSON.
+- Stock currently held in Firebase is NOT wiped by deploying this new ZIP.
+- Clear All requires an internet connection and the new API to be live.
+- Size clears are processed in bounded, auditable batches; if connectivity
+  fails during a large clear, some earlier batches may already be deleted.
+  Refresh and retry, checking the remaining entries. Audit history is retained.
+- Live integration with your Vercel and Firebase project could not be run here;
+  first test on one empty or noncritical size with your own deployment.
