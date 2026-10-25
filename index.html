@@ -752,7 +752,7 @@ function startCloud(){
  });
 }
 const inSize=s=>S.entries.filter(e=>e.size===s);
-const qty=e=>Math.max(1,e.qty|0);
+const qty=e=>1; // every picture is its own item, even if the SKU repeats
 const cnt=s=>{const a=inSize(s);let v=0,x=0;a.forEach(e=>{const q=qty(e);if(e.sold)x+=q;else v+=q});return[v,x]};
 function list(){const q=$('#q').value.trim().toLowerCase();
  const ts=e=>e.ts||0;
@@ -872,16 +872,9 @@ async function pick(files){toast('Pictures process ho rahi hain...');const rows=
  d.showModal();$('#c').onclick=()=>d.close();
  $('#ok').onclick=()=>{let bad=0,add=0;rows.forEach((r,i)=>{r.sku=d.querySelector(`[data-k="${i}"][data-f=sku]`).value.trim().toUpperCase();r.price=d.querySelector(`[data-k="${i}"][data-f=price]`).value;if(!r.sku)bad++});
   if(bad)return toast('Har picture ka SKU likhein');
-  const now=Date.now();const seen={};
-  rows.forEach(r=>{
-   const key=r.sku;
-   if(seen[key]){seen[key].n++;return}
-   seen[key]={n:1,r};
-  });
-  Object.values(seen).forEach(({n,r})=>{
-   const o=S.entries.find(e=>e.size===page&&e.sku===r.sku&&!e.sold);
-   if(o){o.img=r.img;o.price=r.price;o.sold=false;o.ts=now;o.qty=qty(o)+n;add+=n}
-   else{S.entries.push({id:now.toString(36)+Math.random().toString(36).slice(2,6),size:page,sku:r.sku,price:r.price,img:r.img,sold:false,ts:now,qty:n});add+=n}
+  const now=Date.now();
+  rows.forEach((r,k)=>{
+   S.entries.push({id:now.toString(36)+Math.random().toString(36).slice(2,6)+k,size:page,sku:r.sku,price:r.price,img:r.img,sold:false,ts:now-k,qty:1});add++;
   });
   save();d.close();render();toast(add+' piece'+(add>1?'s':'')+' add ho gaye')}}
 // One size at a time. Each server batch removes stock AND adds authenticated
